@@ -1,0 +1,36 @@
+{
+  "capability": {
+    "accuracy": 0.0,
+    "multihop_f1": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "top3_hit_rate": 0.0
+  },
+  "faithfulness": {
+    "citation_accuracy": 0.0
+  },
+  "efficiency": {
+    "latency": {
+      "mean": 5.783398946126302,
+      "p50": 5.706071853637695,
+      "p95": 7.520198822021484,
+      "p99": 7.520198822021484,
+      "max": 7.520198822021484
+    },
+    "latency_breakdown": {
+      "tools_sum": 0.15393892923990884,
+      "verify_sum": 0.15751520792643228
+    },
+    "tokens": {
+      "mean": 0.0,
+      "p95": 0
+    },
+    "verify_level_distribution": {
+      "L1": 0.3333333333333333,
+      "L2": 0.3333333333333333,
+      "L3": 0.3333333333333333
+    }
+  }
+}

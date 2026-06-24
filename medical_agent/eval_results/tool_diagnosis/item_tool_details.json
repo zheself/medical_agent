@@ -1,0 +1,854 @@
+[
+  {
+    "item_id": "cmb_0_0",
+    "query": "现病史\n（1）病史摘要\n     病人，男，49岁，3小时前解大便后出现右下腹疼痛，右下腹可触及一包块，既往体健。\n（2",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_0_1",
+    "query": "现病史\n（1）病史摘要\n     病人，男，49岁，3小时前解大便后出现右下腹疼痛，右下腹可触及一包块，既往体健。\n（2",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_1_2",
+    "query": "现病史\n（1）病史摘要\n    杨XX，女，59岁，30年前无明显诱因开始出现反酸、反食、烧心，胸骨后烧灼感，伴胃胀、嗳",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_2_3",
+    "query": "现病史\n（1）病史摘要\n    周XX，男，34岁，2年前无明显诱因反复出现肛门部肿物脱出，可自行回纳，1周前出现大便后",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_4_4",
+    "query": "现病史\n病史摘要\n    李XX，男，44岁，5年前，病人右侧输尿管结石于当地医院行碎石手术，术后反复出现双侧尿路结石。",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_5_5",
+    "query": "现病史\n（1）病史摘要\n男性病儿，3岁，4个月前母亲替他洗澡时，发现右侧上腹部无痛性肿块，如苹果大小，无疼痛，肿块活动性",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_5_6",
+    "query": "现病史\n（1）病史摘要\n男性病儿，3岁，4个月前母亲替他洗澡时，发现右侧上腹部无痛性肿块，如苹果大小，无疼痛，肿块活动性",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_7_7",
+    "query": "现病史\n（1）病史摘要\n    田XX，女，61岁，上腹痛1个月，加重3天，无明显黄疸，无发热、无恶心、呕吐、腹泻，无肝",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_8_8",
+    "query": "现病史\n（1）主诉：跌倒后下腹痛伴肉眼血尿、尿少1天\n（2）现病史：患者昨日行走时俯卧跌倒，自述昨晚开始出现剧烈下腹痛，",
+    "tools": [
+      "ner",
+      "kg_global_search",
+      "ppr_reasoner"
+    ],
+    "complexity": "high",
+    "thought_preview": "用户描述多个症状，需要鉴别诊断，调用 GraphRAG global search + PPR",
+    "has_ppr": true
+  },
+  {
+    "item_id": "cmb_9_9",
+    "query": "现病史\n（1）病史摘要\n      张X，女，39岁，3年前查体发现血压升高，血压波动于160/110mmHg左右，未规",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_10_10",
+    "query": "现病史\n（1）病史摘要\n\n      杨立，男， 12岁，因活动后头晕、乏力、气促、心悸5年就诊。曾于当地医院检查发现“",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_11_11",
+    "query": "现病史\n（1）病史摘要\n男性，70岁，河南籍。两周前开始出现吞咽不畅，进硬食明显，无呕血、黑便，无反酸、呕吐，无声音嘶哑",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_11_12",
+    "query": "现病史\n（1）病史摘要\n男性，70岁，河南籍。两周前开始出现吞咽不畅，进硬食明显，无呕血、黑便，无反酸、呕吐，无声音嘶哑",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_12_13",
+    "query": "现病史\n（1）病史摘要\n           病人张**，男，47岁，10天前无明显诱因出现头晕，伴恶心，未呕吐，未诉头",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_13_14",
+    "query": "现病史\n（1）病史摘要\n患者于入院前1年无明显诱因出现腰痛，同时伴有左下肢放射痛。疼痛在劳累后加重，休息可有缓解。于当地",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_14_15",
+    "query": "现病史\n（1）病史摘要\n    潘XX，男，51岁，近一个月来感肝区胀痛不适，体乏力，食欲不振，偶有右中腹部隐痛，无发热",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_15_16",
+    "query": "现病史\n（1）病史摘要\n病人，33岁，青年男性，2月余无明显诱因出现头晕、视物模糊，遂至医院就诊，发现血压明显升高，最高",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_16_17",
+    "query": "现病史\n（1）病史摘要\n      病人陈XX，男，38岁，已婚14年，至今未育。因“发现左下腹包块渐大2年余”入院。病",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_17_18",
+    "query": "现病史\n（1）病史摘要\n        唐xx，男，75岁，病人两天前出现头痛、反应迟钝，左侧肢体乏力，症状逐渐加重。伴",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_18_19",
+    "query": "现病史\n（1）病史摘要\n    徐XX，女，66岁，发现3年，右上腹隐痛10天，无黄疸，无发热、无恶心、呕吐、腹泻，无肝",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_19_20",
+    "query": "现病史\n（1）病史摘要\n病人xx，男，54岁，因“自触及左侧腹部肿块1周”入院，病人一周前无意中触及左侧上腹部肿块，近两",
+    "tools": [
+      "ner",
+      "kg_global_search",
+      "ppr_reasoner"
+    ],
+    "complexity": "high",
+    "thought_preview": "用户描述多个症状，需要鉴别诊断，调用 GraphRAG global search + PPR",
+    "has_ppr": true
+  },
+  {
+    "item_id": "cmb_20_21",
+    "query": "现病史\n（1）病史摘要\n李×，56岁，环卫工人，3天前左手示指近节被竹刺扎伤，有少量出血，自行拔除后未给予进一步处理，1",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_21_22",
+    "query": "现病史\n(1) 病史摘要\n王某，男，69岁，于两日前出现发热症状，最高38.3℃，伴畏寒。同时发现左下肢皮肤红肿，色鲜红",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_22_23",
+    "query": "现病史\n（1）病史摘要\n男性，42岁，感胸部憋闷3周就诊，外院胸片发现上纵隔明显增宽。无声音嘶哑、饮水呛咳等症状。发病以",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_22_24",
+    "query": "现病史\n（1）病史摘要\n男性，42岁，感胸部憋闷3周就诊，外院胸片发现上纵隔明显增宽。无声音嘶哑、饮水呛咳等症状。发病以",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_22_25",
+    "query": "现病史\n（1）病史摘要\n男性，42岁，感胸部憋闷3周就诊，外院胸片发现上纵隔明显增宽。无声音嘶哑、饮水呛咳等症状。发病以",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_23_26",
+    "query": "现病史\n（1）病史摘要\n病人于7年前无明显诱因出现剧烈活动时不自主尿外漏，无尿频、尿痛、排尿困难、发热、血尿等症状，未予",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_23_27",
+    "query": "现病史\n（1）病史摘要\n病人于7年前无明显诱因出现剧烈活动时不自主尿外漏，无尿频、尿痛、排尿困难、发热、血尿等症状，未予",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_24_28",
+    "query": "现病史\n病史摘要\n周XX，男，25岁，1年前因车祸致小肠损伤，行部分小肠切除吻合术。术中切除小肠约40cm。术后病人恢复",
+    "tools": [
+      "ner",
+      "kg_global_search",
+      "ppr_reasoner"
+    ],
+    "complexity": "high",
+    "thought_preview": "用户描述多个症状，需要鉴别诊断，调用 GraphRAG global search + PPR",
+    "has_ppr": true
+  },
+  {
+    "item_id": "cmb_25_29",
+    "query": "现病史\n（1）病史摘要\n女性，64岁。病人入院前2周前出现发热，体温最高达39.5℃，伴有咳嗽、咳痰，为白色黏痰，遂到医",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_25_30",
+    "query": "现病史\n（1）病史摘要\n女性，64岁。病人入院前2周前出现发热，体温最高达39.5℃，伴有咳嗽、咳痰，为白色黏痰，遂到医",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_26_31",
+    "query": "现病史\n（1） 病史摘要\n王某某，男，6个月，足月产出生，出生后情况良好，无窒息抢救史，出生后3日出现皮肤巩膜黄染，于当",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_29_32",
+    "query": "现病史\n病史摘要\n    李XX，男，44岁，1年前，病人无意中扪及左侧颈前区包块，约鹌鹑蛋大小，随吞咽上下活动，不伴有",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_30_33",
+    "query": "现病史\n（1）病史摘要\n      女性，48岁。病人6天前无诱因突发全身抽搐伴意识丧失，表现为双眼上翻，口吐白沫，四肢",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_31_34",
+    "query": "现病史\n（1）病史摘要\n      杨××，63岁，男性，骑自行车与小轿车相撞，当即意识丧失、不语，伴右侧外耳道流血，无",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_32_35",
+    "query": "现病史\n（1）病史摘要\n刘某某，女/60y，2个月前，无明显诱因出现中上腹不适，渐加重，伴后背部持续疼痛，1个月前出现皮",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_32_36",
+    "query": "现病史\n（1）病史摘要\n刘某某，女/60y，2个月前，无明显诱因出现中上腹不适，渐加重，伴后背部持续疼痛，1个月前出现皮",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_35_37",
+    "query": "现病史\n（1）病史摘要\n      王X，女，31岁，1年前因头痛查体发现血压升高，最高170/110mmHg，口服拜新",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_36_38",
+    "query": "现病史\n(1) 病史摘要\n李某，男，70岁，于7日前无意中发现颈左后部皮肤红肿，伴触痛，触摸表面不光滑，有多个凸点。病人",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_37_39",
+    "query": "现病史\n（1）病史摘要\n 张XX，男，54岁，3小时车祸伤后左膝疼痛，活动受限。既往体健。\n（2）主诉\n外伤致左膝关节疼",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_38_40",
+    "query": "现病史\n（1）病史摘要\n男性，59岁。主因“上腹部隐痛不适伴食欲减退三个月”来我院门诊就诊。病人三个月来感觉上腹正中剑突",
+    "tools": [
+      "ner",
+      "kg_global_search",
+      "ppr_reasoner"
+    ],
+    "complexity": "high",
+    "thought_preview": "用户描述多个症状，需要鉴别诊断，调用 GraphRAG global search + PPR",
+    "has_ppr": true
+  },
+  {
+    "item_id": "cmb_38_41",
+    "query": "现病史\n（1）病史摘要\n男性，59岁。主因“上腹部隐痛不适伴食欲减退三个月”来我院门诊就诊。病人三个月来感觉上腹正中剑突",
+    "tools": [
+      "ner",
+      "kg_global_search",
+      "ppr_reasoner"
+    ],
+    "complexity": "high",
+    "thought_preview": "用户描述多个症状，需要鉴别诊断，调用 GraphRAG global search + PPR",
+    "has_ppr": true
+  },
+  {
+    "item_id": "cmb_39_42",
+    "query": "现病史\n（1）病史摘要\n      王XX，女，50岁，近2周来无明显诱因出现皮肤黄染，极度乏力，伴恶心、呕吐等消化道症",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_40_43",
+    "query": "现病史\n（1）病史摘要\n      代xx，男，67岁，14+小时前病人无明显诱因出现头晕，无头痛呕吐，无肢体抽搐，无肢",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_41_44",
+    "query": "现病史\n（1）病史摘要\n            病人张**，男，31岁，2个月前工作时无明显诱因突发剧烈头痛、头晕伴四肢",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_44_45",
+    "query": "现病史\n（1）病史摘要\n    赵XX，男，59岁，近3个月来出现咳嗽，开始为刺激性干咳，后逐渐加重，偶有黄痰。给予口服",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_45_46",
+    "query": "现病史\n（1）病史摘要\n      李XX，女，31岁，近两个月来感大便次数增多，且为稀烂便，偶有黑便，无腹痛、发热、恶",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_46_47",
+    "query": "现病史\n（1）病史摘要\n           病人张**，男，32岁，20天前病人无明显诱因突发头痛，伴恶心、呕吐，无意",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_48_48",
+    "query": "现病史\n（1）病史摘要\n病人女，35岁，年幼时居住在牧场，有羊、犬接触。\n自诉约半月前劳累后出现发热不适，自测体温最高3",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_50_49",
+    "query": "现病史\n（1）病史摘要\n      病人，男，49岁，腹痛、腹胀、发热半月，皮肤黄染1周 ，既往胆囊结石、胆管炎病史十余",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_51_50",
+    "query": "现病史\n（1） 病史摘要\n赵某，男，7岁，病儿于3天前无明显诱因出现腹部疼痛，伴寒战高热，最高体温38.7℃，于当地行“",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_52_51",
+    "query": "现病史\n（1）病史摘要\n      男性，68岁。主诉“右上腹痛伴发热40小时” 。约40小时前病人无明显诱因下出现右上",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_52_52",
+    "query": "现病史\n（1）病史摘要\n      男性，68岁。主诉“右上腹痛伴发热40小时” 。约40小时前病人无明显诱因下出现右上",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_53_53",
+    "query": "现病史\n（1）病史摘要\n       病人2017年8月15日夜间驾驶摩托车被出租车横向撞伤，当时诉腹部胀痛、左膝疼痛，",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_54_54",
+    "query": "现病史\n（1）病史摘要\n病人，男，52岁， 16年高血压病史， 降压治疗不规律， 最高血压200/120mmHg， 服用",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_56_55",
+    "query": "现病史\n（1）病史摘要\n      女性，52岁。病人十余年前无明显诱因开始出现手足粗大，伴有面容宽大，下颌突出，鼻肥大",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_57_56",
+    "query": "现病史\n（1）病史摘要\n马XX，女，33岁，病人10余年前无明显诱因出现低血糖发作，多发生于餐前，表现为乏力、复视及大汗",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_57_57",
+    "query": "现病史\n（1）病史摘要\n马XX，女，33岁，病人10余年前无明显诱因出现低血糖发作，多发生于餐前，表现为乏力、复视及大汗",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_58_58",
+    "query": "现病史\n（1）病史摘要\n王××，男，65岁。病人1个月前无明显诱因下出现无痛性肉眼血尿，血尿为全程性，饮水后可减轻，偶可",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_58_59",
+    "query": "现病史\n（1）病史摘要\n王××，男，65岁。病人1个月前无明显诱因下出现无痛性肉眼血尿，血尿为全程性，饮水后可减轻，偶可",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_59_60",
+    "query": "现病史\n（1）病史摘要\n范XX，女，32岁，十余年前开始出现体型发胖，食欲好，胃纳佳，喜食荤食、甜食及油炸食品。伴有关节",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_60_61",
+    "query": "现病史\n（1）病史摘要\n       陈某，男性，28 岁，在田间干农活时左手被，诉伤口流血不止，后伴肿痛，就诊于当地卫",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_62_62",
+    "query": "现病史\n（1）病史摘要\n    陈XX，男，65岁，近一周来反复排暗红色血便，伴头晕乏力。半天前再次排血便，量约600m",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_63_63",
+    "query": "现病史\n（1）病史摘要\n    张XX，女，24岁，妊娠后哺乳3周，左侧乳房胀痛2日，高热2小时，伴乏力，无寒战、恶心、",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_64_64",
+    "query": "现病史\n（1）病史摘要\n男性，52岁。主诉“突发上腹部疼痛2小时” 。病人2小时前无明显诱因突然出现上腹部疼痛，呈刀割样",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_64_65",
+    "query": "现病史\n（1）病史摘要\n男性，52岁。主诉“突发上腹部疼痛2小时” 。病人2小时前无明显诱因突然出现上腹部疼痛，呈刀割样",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_65_66",
+    "query": "现病史\n（1）病史摘要\n     男性，21岁。诉：无明显诱因出现左膝关节上方疼痛，疼痛为隐痛，部位为股骨远端偏内侧痛，",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_65_67",
+    "query": "现病史\n（1）病史摘要\n     男性，21岁。诉：无明显诱因出现左膝关节上方疼痛，疼痛为隐痛，部位为股骨远端偏内侧痛，",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_65_68",
+    "query": "现病史\n（1）病史摘要\n     男性，21岁。诉：无明显诱因出现左膝关节上方疼痛，疼痛为隐痛，部位为股骨远端偏内侧痛，",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_66_69",
+    "query": "现病史\n（1）病史摘要\n女性，28岁，半年前劳累后出现右腰部疼痛，疼痛呈持续性钝痛。半年来，偶有心悸、乏力、失眠、眩晕。",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_66_70",
+    "query": "现病史\n（1）病史摘要\n女性，28岁，半年前劳累后出现右腰部疼痛，疼痛呈持续性钝痛。半年来，偶有心悸、乏力、失眠、眩晕。",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_67_71",
+    "query": "现病史\n（1）病史摘要\n王XX，女，52岁，2年前无明显诱因活动后心慌、胸闷、呼吸困难，1个月前，因受凉感冒后症状加重，",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_67_72",
+    "query": "现病史\n（1）病史摘要\n王XX，女，52岁，2年前无明显诱因活动后心慌、胸闷、呼吸困难，1个月前，因受凉感冒后症状加重，",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_68_73",
+    "query": "现病史\n（1）病史摘要\n        刘XX，男，46岁，货车司机。近1年来自觉“勃起不坚”，性交时阴茎勉强能插入阴道",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_69_74",
+    "query": "现病史\n（1）病史摘要\n    王XX，女，62岁，上腹痛伴胸背部胀痛不适1个月，加重2天，无明显黄疸，无发热、无恶心、",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_72_75",
+    "query": "现病史\n（1）病史摘要\n      王XX，女，42岁，近1个月来感右乳无痛性肿块，无乳房疼痛、乳头溢液等。无乳房手术或",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  },
+  {
+    "item_id": "cmb_73_76",
+    "query": "现病史\n（1）病史摘要\n病人，男，67岁，3年前发现阴茎根部处阴囊溃疡，伴瘙痒不适，在当地医院就诊，给予外用药膏擦涂，效",
+    "tools": [
+      "ner",
+      "kg_local_search"
+    ],
+    "complexity": "medium",
+    "thought_preview": "通用查询，混合检索",
+    "has_ppr": false
+  }
+]

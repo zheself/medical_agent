@@ -1,0 +1,33 @@
+{
+  "total_items": 77,
+  "successful": 77,
+  "failed": 0,
+  "tool_item_count": {
+    "ner": 77,
+    "kg_local_search": 72,
+    "kg_global_search": 5,
+    "ppr_reasoner": 5
+  },
+  "tool_step_count": {
+    "ner": 77,
+    "kg_local_search": 72,
+    "kg_global_search": 5,
+    "ppr_reasoner": 5
+  },
+  "ppr_items": [
+    "cmb_8_8",
+    "cmb_19_20",
+    "cmb_24_28",
+    "cmb_38_40",
+    "cmb_38_41"
+  ],
+  "ppr_call_rate": 0.06493506493506493,
+  "complexity_distribution": {
+    "medium": 72,
+    "high": 5
+  },
+  "tool_combos": {
+    "('kg_local_search', 'ner')": 72,
+    "('kg_global_search', 'ner', 'ppr_reasoner')": 5
+  }
+}
