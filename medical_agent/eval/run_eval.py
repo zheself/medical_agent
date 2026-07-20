@@ -34,6 +34,14 @@ def parse_args():
     p.add_argument("--output-dir", default="./eval_results")
     p.add_argument("--concurrency", type=int, default=1,
                    help="并发数（vllm 建议 1 避免服务过载）")
+    p.add_argument("--no-ppr", action="store_true",
+                   help="消融：禁用 PPR 多跳推理（用于评估 PPR 净贡献）")
+    p.add_argument("--max-verifier-level", default=None, choices=["L1", "L2", "L3"],
+                   help="限制反思最高级别（消融用）")
+    p.add_argument("--enable-memory-gating", action="store_true",
+                   help="消融：启用 long-term memory relevance gating")
+    p.add_argument("--memory-gate-threshold", type=float, default=0.2,
+                   help="Memory gating relevance threshold (default 0.2)")
     return p.parse_args()
 
 
@@ -115,6 +123,9 @@ async def run_single_item(agent, item: EvalItem) -> Dict[str, Any]:
         "agent_reported_elapsed_ms": answer.total_elapsed_ms,
         "module_latencies": module_latencies,
         "verify_level_reached": verify_level,
+        "verification_meta": answer.verification_meta,
+        "execution_meta": answer.execution_meta,
+        "memory_meta": answer.memory_meta,
         "total_tokens": answer.total_tokens,
         "difficulty": item.difficulty,
     }
@@ -188,6 +199,20 @@ async def main():
 
     # 组装 Agent
     agent = build_agent(backend=args.backend)
+
+    # 消融开关
+    if args.no_ppr:
+        agent.enable_ppr = False
+        logger.info("消融: PPR OFF — ppr_reasoner 步骤将被跳过")
+    if args.max_verifier_level:
+        agent.max_verifier_level = args.max_verifier_level
+        if hasattr(agent.verifier, "max_level"):
+            agent.verifier.max_level = args.max_verifier_level
+        logger.info(f"消融: max_verifier_level={args.max_verifier_level}")
+    if args.enable_memory_gating:
+        agent.enable_memory_gating = True
+        agent.memory_gate_threshold = args.memory_gate_threshold
+        logger.info(f"消融: memory_gating enabled, threshold={args.memory_gate_threshold}")
 
     if args.backend != "vllm":
         logger.warning(f"Backend={args.backend} — 使用 mock/db 数据，数字不代表真实 LLM 表现")

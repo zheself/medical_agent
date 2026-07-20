@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional
 
@@ -44,7 +45,7 @@ PLANNER_SYSTEM_PROMPT = """你是一个医疗诊断 Agent 的规划器。你的�
 ```json
 {{
   "thought": "你的完整诊断推理过程（这是回答用户的核心内容，必须包含：症状分析、可能的诊断及依据、鉴别要点、就医建议）",
-  "diagnoses": ["按置信度排序的诊断列表，如 [\"脑膜炎\", \"脑炎\"]。事实查询填 []"],
+  "diagnoses": ["按置信度排序的诊断列表。诊断类问题至少给出 3-5 个候选，如 [\"脑膜炎\", \"脑炎\", \"蛛网膜下腔出血\", \"流感\", \"偏头痛\"]。事实查询填 []"],
   "complexity": "low | medium | high",
   "steps": [
     {{
@@ -80,8 +81,9 @@ thought 中每一条医学论断都必须用 **[实体A] -[关系]-> [实体B]**
 
 # 复杂度判断
 - **low**: 简单事实查询（如"X 是什么药"），仅需 1-2 个工具
-- **medium**: 需要 KG 推理或多工具协同（如"X 的症状有哪些"）
-- **high**: 鉴别诊断、多跳推理、涉及安全性判断
+- **medium**: 单一概念的事实查询（如"X 的症状有哪些"）
+- **high**: 临床病例诊断、鉴别诊断、多跳推理、涉及安全性判断
+  ⚠️ 只要问题涉及"从症状推断疾病"或"需要列出多个可能诊断"，就应判为 high
 
 # Planning 原则
 1. 优先考虑并行：无依赖的 step 不要写 depends_on
@@ -89,6 +91,8 @@ thought 中每一条医学论断都必须用 **[实体A] -[关系]-> [实体B]**
 3. 鉴别诊断类问题优先用 kg_global_search 而非 kg_local_search
 4. 如果用户有过往病史（来自 Working Memory），必须在计划中考虑
 5. 工具结果是你的知识补充，但 thought 中的推理必须基于你的医学知识完成，不要依赖工具返回空结果
+6. high-complexity（鉴别诊断/多跳推理）问题应同时使用 kg_global_search 和 ppr_reasoner，前者提供社区级全局视角，后者从种子实体做多跳推理发现潜在关联疾病
+7. 同一工具默认只调用一次，除非输入目标明显不同（如 kg_local_search 分别查两个不同实体的邻居）。不要对同一实体重复调用同一工具。
 """
 
 
@@ -97,9 +101,11 @@ SELF_CRITIQUE_SUFFIX = """
 # 现在请审视上述计划：
 1. 是否遗漏了重要的检索步骤？
 2. 工具选择是否最优（local vs global）？
-3. 是否有冗余步骤可以删除？
+3. 是否有冗余步骤可以删除？**特别注意同一工具是否重复调用——除非输入目标明显不同，同一工具只应出现一次**
 4. depends_on 设置是否正确，能否更多并行？
 5. **thought 是否包含了完整的诊断推理和引用依据？** 如果 thought 只是计划摘要而非诊断推理，必须修正。
+6. **复杂度是否正确？** 如果问题涉及临床诊断或鉴别诊断但被判为 medium，应修正为 high 并补充 ppr_reasoner 等推理工具
+7. **diagnoses 候选是否足够？** 诊断类问题应至少给出 3-5 个候选诊断，如果少于 3 个，应补充
 
 如果计划已最优，请直接输出：CONFIRMED
 否则输出修正后的完整 JSON，前缀为：REVISED:
@@ -371,6 +377,32 @@ class VLLMBackend(LLMBackend):
 
 
 # ============================================================
+# 输出规范化辅助
+# ============================================================
+
+def _coerce_int(val: Any) -> Optional[int]:
+    """将各种格式转为 int：1 / "1" / "step1" / 1.0 → 1
+
+    无法转换时返回 None。
+    """
+    if isinstance(val, int):
+        return val
+    if isinstance(val, float):
+        return int(val)
+    if isinstance(val, str):
+        # "step1" / "Step1" / "Step_1" → 1
+        m = re.match(r'[sS]tep[_]?(\d+)', val)
+        if m:
+            return int(m.group(1))
+        # "1" → 1
+        try:
+            return int(val)
+        except ValueError:
+            return None
+    return None
+
+
+# ============================================================
 # Planner Agent
 # ============================================================
 
@@ -411,11 +443,11 @@ class PlannerAgent:
             Plan 对象
         """
         prompt = self._build_prompt(query, working_memory, episodic_hints)
-        
+
         # 阶段 1: 生成初版计划
         draft_response = self.llm.generate(prompt, max_tokens=1024)
-        draft_plan = self._parse_plan(draft_response)
-        
+        draft_plan = self._sanitize_plan(self._parse_plan(draft_response))
+
         # 阶段 2: Self-Critique（复用 KV Cache）
         if self.enable_self_critique:
             critique_response = self.llm.continue_generation(
@@ -423,10 +455,13 @@ class PlannerAgent:
                 suffix=SELF_CRITIQUE_SUFFIX,
                 max_tokens=512,
             )
-            final_plan = self._apply_critique(draft_plan, critique_response)
+            final_plan = self._sanitize_plan(self._apply_critique(draft_plan, critique_response))
         else:
             final_plan = draft_plan
-        
+
+        # 阶段 3: 规则层路由 guard — 修正 LLM 过度 high 化
+        final_plan = self._route_complexity(query, final_plan)
+
         return final_plan
     
     def _build_prompt(
@@ -511,7 +546,127 @@ class PlannerAgent:
             return self._parse_plan(revised_json)
         # 未识别格式，保留原计划
         return draft
-    
+
+    # ============================================================
+    # 输出规范化：修复类型、去重、校验 DAG
+    # ============================================================
+
+    def _sanitize_plan(self, plan: Plan) -> Plan:
+        """
+        规范化 Planner 输出：
+        1. step_id → int（支持 "1" / 1.0 / "step1"）
+        2. depends_on → List[int]（清洗非法引用、自依赖、不存在 step）
+        3. 去重 guard（kg_global_search/ppr_reasoner/ner 限 1 次, kg_local_search 限 3 次）
+
+        不重编号 step_id——避免 ${stepN.output} 引用断裂。
+        """
+        if not plan.steps:
+            return plan
+
+        # 1. 规范化 step_id → int
+        for s in plan.steps:
+            coerced = _coerce_int(s.step_id)
+            if coerced is not None:
+                s.step_id = coerced
+
+        # 2. 规范化 depends_on → List[int]，清洗非法值
+        valid_ids = {s.step_id for s in plan.steps}
+        for s in plan.steps:
+            normalized = []
+            for dep in s.depends_on:
+                dep_int = _coerce_int(dep)
+                if dep_int is None:
+                    continue
+                if dep_int == s.step_id:
+                    continue  # 自依赖 → 跳过
+                if dep_int not in valid_ids:
+                    continue  # 引用不存在 step → 跳过
+                normalized.append(dep_int)
+            s.depends_on = normalized
+
+        # 3. 去重 guard：同一工具重复调用
+        tool_limits = {
+            "ppr_reasoner": 1,
+            "kg_global_search": 1,
+            "ner": 1,
+            "kg_local_search": 3,
+        }
+        kept_steps = []
+        tool_counts: Dict[str, int] = {}
+        removed_ids = set()
+        for s in plan.steps:
+            limit = tool_limits.get(s.tool, 3)
+            count = tool_counts.get(s.tool, 0)
+            if count < limit:
+                kept_steps.append(s)
+                tool_counts[s.tool] = count + 1
+            else:
+                removed_ids.add(s.step_id)
+
+        # 清洗删除 step 的依赖引用
+        for s in kept_steps:
+            s.depends_on = [d for d in s.depends_on if d not in removed_ids]
+
+        plan.steps = kept_steps
+        return plan
+
+    # ============================================================
+    # 规则层路由 guard：修正 LLM 过度 high 化
+    # ============================================================
+
+    # 临床病例结构标记（CMB-Clin 等评测集的典型结构）
+    _CASE_MARKERS = ["现病史", "体格检查", "辅助检查", "主诉", "既往史", "个人史", "家族史"]
+
+    # 简单查询模式：这些明显不是临床诊断任务
+    _SIMPLE_QUERY_PATTERNS = [
+        (re.compile(r"^(.*?)(是什么药|是哪种药|属于哪类药|的药理|的副作用|的禁忌|的用法|的剂量)"), "药品查询"),
+        (re.compile(r"^(.*?)(怎么治|如何治疗|用什么药|吃什么药|治疗方案)"), "治疗查询"),
+        (re.compile(r"^(.*?)(的症状|的病因|的发病机制|的临床表现|的诊断标准)"), "单病查询"),
+        (re.compile(r"^(.*?)(的预防|的预后|的并发症|的注意事项)"), "预防/预后查询"),
+    ]
+
+    def _route_complexity(self, query: str, plan: Plan) -> Plan:
+        """
+        规则层复杂度路由：修正 LLM 的过度 high 化倾向。
+
+        设计原则：
+        - LLM prompt 对 "从症状推断疾病" 的 high 判定是正确的 — CMB-Clin 所有条目都满足
+        - 但通用场景中，药品查询/单病查询/治疗查询不应触发 PPR
+        - 规则层作为 safety net：对明显不是病例的查询降级，防止无差别 high+PPR
+
+        对 CMB-Clin 的影响：所有条目都有完整病例结构，规则层不会降级。
+        路由 guard 的价值体现在通用场景，而非特定评测集。
+        """
+        query_len = len(query)
+
+        # 1. 临床病例信号检测：有多个病例结构标记 = 临床病例
+        case_signal_count = sum(1 for m in self._CASE_MARKERS if m in query)
+
+        # 2. 简单查询模式检测
+        matched_simple_type = None
+        for pattern, qtype in self._SIMPLE_QUERY_PATTERNS:
+            if pattern.search(query):
+                matched_simple_type = qtype
+                break
+
+        # 3. 路由决策
+        if case_signal_count >= 2:
+            # 明确临床病例 → 保持或升级到 high
+            # （LLM 可能误判 medium，但病例文本应 high）
+            if plan.complexity != ComplexityLevel.HIGH:
+                plan.complexity = ComplexityLevel.HIGH
+        elif matched_simple_type and query_len < 200:
+            # 短简单查询 → cap 到 medium，移除 PPR
+            if plan.complexity == ComplexityLevel.HIGH:
+                plan.complexity = ComplexityLevel.MEDIUM
+                plan.steps = [s for s in plan.steps if s.tool != "ppr_reasoner"]
+        elif matched_simple_type:
+            # 较长简单查询（>200 chars 但匹配简单模式）→ 保持 LLM 判断
+            # 不强制降级，因为长文本可能包含隐含的鉴别诊断需求
+            pass
+
+        return plan
+
     @staticmethod
     def _extract_json(text: str) -> str:
         """从混杂文本中提取 JSON"""

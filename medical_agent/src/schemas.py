@@ -241,10 +241,19 @@ class Episode:
     medications: List[str] = field(default_factory=list)
     symptoms: List[str] = field(default_factory=list)
     summary: str = ""
+    # Durable lifecycle metadata. Only active facts participate in normal retrieval.
+    status: str = "active"                                    # active/superseded/retracted
+    provenance: Dict[str, Any] = field(default_factory=dict)   # source/type/reference/confidence
+    superseded_by: Optional[str] = None
     importance_score: float = 0.0
     access_count: int = 0
     last_accessed: Optional[datetime] = None
     embedding: Optional[List[float]] = None
+    embedding_model: str = ""
+    embedding_dim: int = 0
+    # Retrieval-only observability; not part of the durable medical event.
+    retrieval_score: Optional[float] = None
+    retrieval_components: Dict[str, float] = field(default_factory=dict)
 
 
 # ============================================================
@@ -262,6 +271,9 @@ class FinalAnswer:
     # 元数据（用于 eval）
     plan: Optional[Plan] = None
     verification_results: List[VerifyResult] = field(default_factory=list)
+    verification_meta: Dict[str, Any] = field(default_factory=dict)  # trigger_reason / l3_skip_reason / level_reached
+    execution_meta: Dict[str, Any] = field(default_factory=dict)      # tool_wall_ms / parallelism_ratio / layer_widths
+    memory_meta: Dict[str, Any] = field(default_factory=dict)           # scope / working / episodic / injection
     total_elapsed_ms: float = 0.0
     total_tokens: int = 0
     # 警告/免责声明

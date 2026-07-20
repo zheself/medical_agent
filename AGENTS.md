@@ -33,16 +33,27 @@ Current progress:
 - PPR IDF edge weighting and type filtering are complete.
 - The evaluation pipeline is working.
 - CMB-Clin evaluation data has 77 items; the adapter quality and loose-match rules have been validated.
-- Full vLLM evaluation has been run twice: V1 baseline and V2 after memory isolation.
-- Key finding: PPR call rate is only 6.5%. The root cause is Planner complexity classification: 93.5% of items are classified as `medium`, so they only trigger `local_search`.
-- The episodic memory noise bug from cross-item eval pollution has been fixed.
+- Current baseline: **V8** — L3 Phase 2 (prompt rewrite + trigger guard) on top of Phase 1 (merge guard).
+  - Top-3 loose **45.5%**, Top-5 49.4%, Hard Top-3 47.5%, 0 errors (77/77).
+  - V7 holds historical best: Top-3 46.7%, Hard Top-3 50.0%.
+  - L3 reflexion rate 9.1% — all triggers are `empty_diagnoses`, 0 correct wipes.
+  - L3 merge guard + trigger guard enabled. `verification_meta` field tracks trigger/skip reasons.
+  - Diagnosis baseline remains V8; **103/103 tests passing** after V11b engineering work.
+- V9 hardened DAG tool parallelism and added `execution_meta`; the synthetic sleep benchmark reached 2.98x parallelism.
+- V10a-c completed Memory observability, rule gating, lifecycle correctness, and a 60-scenario multi-session benchmark.
+  - Qwen3-8B V10c: Raw Memory raised answer constraint pass from 46% to 90%, but injected 2.0 irrelevant memories/item.
+  - Rule Gate reduced episodic context by 86.3%, but episodic injection recall fell to 28%; critical-profile recall remained 100%.
+  - Cross-user leakage was 0% for all configurations.
+- Key finding from P0 ablation: PPR net contribution on CMB-Clin is near zero (≈−1.3pp @ L2-only, within run variance).
+  The PPR OFF Top-3 advantage (+6.1pp) was mostly L3 reflexion compensation, not PPR quality.
+- V11b completed hard-negative reranking with a 24/36 dev/test split. On held-out test, hybrid reranking raises Recall@1 from 30.0% to 50.0% and reduces temporal forbidden@5 from 100% to 16.7%, but lowers Recall@3/5. Qwen answer constraint pass changes from 80.0% to 83.3%, so reranking remains optional.
 
 First things to do when taking over:
 
 1. Confirm the environment: `conda activate cjz_opd`. The reports record this environment as having `vllm`, `igraph`, `leidenalg`, and `networkx`.
-2. Run `python tests/run_all.py` from `medical_agent/`; the expected historical baseline is 38/38 passing.
-3. Start vLLM on port 8001 and run `python -m eval.run_eval --backend vllm --data-path data/eval_cmb_clin.jsonl` to validate the real pipeline.
-4. Read sections 5e and 5f of `medical_agent/reports/2026-05-30_P1_report.md` before changing Planner routing or evaluation logic.
+2. Run `python tests/run_all.py` from `medical_agent/`; the expected baseline is **103/103 passing**.
+3. Start vLLM on port 8001 and run `python -m eval.run_eval --backend vllm --data-path data/eval_cmb_clin.jsonl --concurrency 1` to validate the real pipeline.
+4. Read `medical_agent/reports/2026-07-17_V11b_reranking_record.md`, `medical_agent/reports/2026-07-16_V11a_bge_retrieval_record.md`, and `medical_agent/reports/2026-07-15_V10c_memory_benchmark_record.md` for the latest work records.
 
 Hard rules:
 
@@ -61,11 +72,16 @@ Important completed milestones:
 - Current KG scale is approximately 22,480 entities, 303,143 relations, 22,479 PageRank nodes, and Leiden communities L0=4, L1=14, L2=26.
 - PPR IDF edge weighting and disease-type filtering have been implemented.
 - CMB-Clin evaluation data has been adapted to `data/eval_cmb_clin.jsonl` with 77 items.
-- Full vLLM evaluation has been run twice:
-  - V1 baseline: Top-3 loose 42.1%, mean latency about 30.6s.
-  - V2 after memory isolation and PPR tool-description cleanup: Top-3 loose still 42.1%, mean latency about 24.7s, mean tokens down about 34%.
-- A major eval bug was fixed: each eval item now uses an isolated `user_id=f"eval_{item_id}"` to avoid episodic memory cross-item pollution.
-- Planner tool diagnosis has been run. PPR/global search call rate is only 6.5% because 93.5% of CMB-Clin items are classified as `medium` and routed to `ner + kg_local_search`.
+- **V8 diagnosis baseline**: Top-3 loose 45.5%, Hard Top-3 47.5%, 0 errors. V7 holds historical best Top-3 (46.7%). Current test baseline is 103/103.
+- **V10c Memory benchmark**: 60 scenarios, Qwen3-8B, 180/180 successful. Raw Memory answer constraint pass 90%; Rule Gate 74%; no-memory 46%; cross-user leakage 0%.
+- Planner sanitizer (`_sanitize_plan`) normalizes depends_on types, removes duplicate tool calls, and cleans invalid dependencies.
+- Routing guard (`_route_complexity`) applies rules-based complexity correction on top of LLM judgment.
+- L3 merge guard prevents L3 reflexion from overwriting correct L2 diagnoses.
+- PPR OFF ablation switch and `--max-verifier-level` flag available in `eval/run_eval.py`.
+- Key P0 finding: PPR net contribution on CMB-Clin is near zero (≈−1.3pp @ L2-only). L3 reflexion is a stronger lever.
+- **V11a BGE retrieval**: real BGE-M3 dense Recall@1 72%, MRR 0.850; hybrid reduces temporal forbidden@1 from 80% to 0% but reduces overall MRR to 0.793. Cross-user leakage remains 0%.
+- **V11b reranking**: 12-candidate hard-negative benchmark with frozen dev tuning. Held-out Recall@1 is 50.0% vs dense 30.0%; temporal forbidden@5 is 16.7% vs 100%; Qwen constraint pass is 83.3% vs 80.0%. Recall@3/5 regressions keep it opt-in.
+- Detailed work records: `reports/2026-07-17_V11b_reranking_record.md`, `reports/2026-07-16_V11a_bge_retrieval_record.md`, `reports/2026-07-15_V10c_memory_benchmark_record.md`, and the earlier P0/L3 reports.
 
 ## Directory Map
 
@@ -175,11 +191,7 @@ If a command depends on unavailable services such as Neo4j, Milvus, vLLM, or a G
 
 ## Current Priority Plan
 
-1. P0: adjust Planner complexity/routing so clinical diagnosis and differential-diagnosis items are classified as `high` often enough to trigger `kg_global_search` and `ppr_reasoner`.
-2. P0: increase the number of structured diagnosis candidates. Current full eval averages about two candidates, so Top-3 and Top-5 are identical.
-3. P0: rerun `scripts/diagnose_tool_usage.py` after routing changes. Target a meaningful increase from the current 6.5% PPR/global-search call rate before running expensive full eval.
-4. P0: rerun CMB-Clin vLLM evaluation and then run ablation once routing actually changes tool usage.
-5. P1: implement `SQLiteCommunityStore` so global search uses imported Leiden communities rather than mock community data.
-6. P2: improve KG retrieval depth/performance for PPR and local search, especially around `SQLiteKGBackend.query_neighbors`.
-7. P2: upgrade NER from hard-coded matching to Trie/dictionary normalization first, then consider a model. Real KG entity variants are currently a major recall bottleneck.
-8. P2: decide how much entity normalization is worth doing. Reports show synonym/granularity mismatch is real, but full normalization can become unbounded.
+1. **Temporal Memory**: add structured status, provenance, and supersede handling for conflicting old/new facts.
+2. **Type-aware memory policy**: avoid one global threshold for medication and critical memories; recover recall while retaining abstention.
+3. **Real L2 verifier**: replace MockSmallModel and recalibrate the L3 trigger thresholds.
+4. **KG retrieval**: implement `SQLiteCommunityStore` and improve entity normalization / NER.

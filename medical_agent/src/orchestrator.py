@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .agents.planner import PlannerAgent
 from .memory.episodic_memory import EpisodicMemory
@@ -71,6 +71,10 @@ class MedicalAgentOrchestrator:
         # —— 消融开关（真实生效，用于 eval/run_ablation.py）——
         enable_prefetch: bool = True,
         enable_memory_injection: bool = True,
+        enable_ppr: bool = True,
+        max_parallel_tools: int = 4,
+        enable_memory_gating: bool = False,
+        memory_gate_threshold: float = 0.2,
         max_verifier_level: str = "L3",   # "L1" | "L2" | "L3"，限制反思最高级别
     ):
         self.planner = planner
@@ -83,6 +87,10 @@ class MedicalAgentOrchestrator:
         # 消融开关
         self.enable_prefetch = enable_prefetch
         self.enable_memory_injection = enable_memory_injection
+        self.enable_ppr = enable_ppr
+        self.max_parallel_tools = max_parallel_tools
+        self.enable_memory_gating = enable_memory_gating
+        self.memory_gate_threshold = memory_gate_threshold
         self.max_verifier_level = max_verifier_level
         # 把级别上限同步给 verifier 调度器（真实生效）
         if hasattr(self.verifier, "max_level"):
@@ -97,6 +105,7 @@ class MedicalAgentOrchestrator:
         self._prefetch_cache: Dict[str, ToolResult] = {}
         # 持有后台任务引用，避免被 GC 提前回收（asyncio 弱引用问题）
         self._background_tasks: set = set()
+        self._background_errors: List[BaseException] = []
     
     # ============================================================
     # 主入口
@@ -111,6 +120,7 @@ class MedicalAgentOrchestrator:
         
         # 1. 加载/创建 Working Memory
         wm = self.wm_pool.get(sid)
+        critical_facts = {"allergies": [], "chronic_diseases": []}
         if wm is None:
             wm = self.wm_manager.create(session_id=sid, user_id=user_query.user_id)
             # 冷启动：从 Episodic 加载关键事实（过敏、慢性病）
@@ -118,7 +128,17 @@ class MedicalAgentOrchestrator:
                 critical = self.episodic.retrieve_critical_facts(user_query.user_id)
                 wm.patient_profile.allergies = critical.get("allergies", [])
                 wm.patient_profile.medical_history = critical.get("chronic_diseases", [])
+                critical_facts = {
+                    "allergies": list(critical.get("allergies", [])),
+                    "chronic_diseases": list(critical.get("chronic_diseases", [])),
+                }
             self.wm_pool[sid] = wm
+
+        # 关键事实进入 PatientProfile 后会跨当前 session 持续存在；每轮都如实上报。
+        critical_facts = {
+            "allergies": list(wm.patient_profile.allergies),
+            "chronic_diseases": list(wm.patient_profile.medical_history),
+        }
         
         self.wm_manager.add_user_turn(wm, user_query.text)
         
@@ -139,19 +159,128 @@ class MedicalAgentOrchestrator:
                 episodes = await episodic_task
                 episodic_hints = [
                     {
+                        "episode_id": e.episode_id,
                         "summary": e.summary,
                         "diagnoses": e.diagnoses,
                         "timestamp": e.timestamp.isoformat() if e.timestamp else None,
+                        "status": e.status,
+                        "provenance": e.provenance,
+                        "retrieval_score": e.retrieval_score,
+                        "retrieval_components": e.retrieval_components,
                     }
                     for e in episodes
                 ]
             except Exception as e:
                 episodic_hints = []
-        
+
+        # ── long-term memory gating ──
+        gate_records: List[Dict] = []
+        raw_episodic_hints = list(episodic_hints)
+        raw_episodic_cnt = len(episodic_hints)
+        raw_episodic_chars = len(str(episodic_hints)) if episodic_hints else 0
+        if self.enable_memory_gating and episodic_hints:
+            from src.memory.memory_gate import gate_episodic_hints
+            episodic_hints, gate_records = gate_episodic_hints(
+                user_query.text, episodic_hints,
+                enabled=True, threshold=self.memory_gate_threshold,
+            )
+
+        # ── memory observability: 收集检索和上下文元数据 ──
+        # working memory 始终参与 Planner（短期会话状态），不受 enable_memory_injection 控制。
+        # enable_memory_injection 只控制 episodic/semantic long-term memory 注入。
+        long_term_enabled = self.enable_memory_injection
+        wm_context = self.wm_manager.get_planner_context(wm)
+        wm_ctx_chars = len(str(wm_context)) if wm_context else 0
+        critical_values = critical_facts["allergies"] + critical_facts["chronic_diseases"]
+        episodic_cnt = len(episodic_hints)
+        episodic_ctx_chars = len(str(episodic_hints)) if episodic_hints else 0
+        filtered_cnt = raw_episodic_cnt - episodic_cnt
+        lifecycle_counter = getattr(self.episodic, "lifecycle_counts", None)
+        lifecycle_counts = (
+            lifecycle_counter(user_query.user_id)
+            if callable(lifecycle_counter) and user_query.user_id else {}
+        )
+        retrieved_episode_ids = [
+            str(h.get("episode_id", "")) for h in raw_episodic_hints
+            if h.get("episode_id")
+        ]
+        injected_episode_ids = [
+            str(h.get("episode_id", "")) for h in episodic_hints
+            if h.get("episode_id")
+        ]
+        long_term_chars = episodic_ctx_chars
+        memory_meta = {
+            "scope": {
+                "user_id": user_query.user_id or "",
+                "session_id": session_id or "",
+                "memory_key": session_id or user_query.user_id or "anonymous",
+            },
+            "working": {
+                "enabled": True,
+                "context_chars": wm_ctx_chars,
+                "turn_count": len(wm.conversation_history) if hasattr(wm, "conversation_history") else 0,
+            },
+            "critical": {
+                "enabled": long_term_enabled and self.episodic is not None,
+                "bypasses_gate": True,
+                "allergies": critical_facts["allergies"],
+                "chronic_diseases": critical_facts["chronic_diseases"],
+                "injected_count": len(critical_values),
+                "context_chars": len(str(critical_values)) if critical_values else 0,
+            },
+            "episodic": {
+                "enabled": long_term_enabled and self.episodic is not None,
+                "retrieved_count": raw_episodic_cnt,
+                "injected_count": episodic_cnt,
+                "filtered_count": filtered_cnt,
+                "context_chars": episodic_ctx_chars,
+                "raw_context_chars": raw_episodic_chars,
+                "gating_enabled": self.enable_memory_gating,
+                "gate_threshold": self.memory_gate_threshold,
+                "gate_records": gate_records[:5],
+                "retrieved_episode_ids": retrieved_episode_ids,
+                "injected_episode_ids": injected_episode_ids,
+                "embedding_model": getattr(self.episodic, "embedding_model_id", ""),
+                "retrieval_mode": getattr(self.episodic, "retrieval_mode", ""),
+                "retrieval_weights": list(getattr(
+                    self.episodic, "retrieval_weights", (0.5, 0.3, 0.15, 0.05),
+                )),
+                "reranker_model": getattr(self.episodic, "reranker_model_id", ""),
+                "reranker_candidate_k": getattr(self.episodic, "reranker_candidate_k", 0),
+                "reranker_threshold": getattr(self.episodic, "reranker_threshold", None),
+                "active_only": True,
+                "lifecycle_counts": lifecycle_counts,
+                "retrieval_records": [
+                    {
+                        "episode_id": hint.get("episode_id", ""),
+                        "status": hint.get("status", "active"),
+                        "provenance": hint.get("provenance", {}),
+                        "score": hint.get("retrieval_score"),
+                        "components": hint.get("retrieval_components", {}),
+                    }
+                    for hint in raw_episodic_hints[:5]
+                ],
+            },
+            "semantic": {
+                "enabled": False,
+                "retrieved_count": 0,
+                "context_chars": 0,
+            },
+            "injection": {
+                "long_term_enabled": long_term_enabled,
+                "long_term_context_chars": long_term_chars,
+                "working_context_chars": wm_ctx_chars,
+                "total_context_chars_with_working": wm_ctx_chars + long_term_chars,
+                "total_retrieved_count": raw_episodic_cnt,
+                "total_injected_count": episodic_cnt,
+                "total_filtered_count": filtered_cnt,
+            },
+        }
+
         # 4. Planner 生成计划
         plan = self.planner.plan(
             query=user_query.text,
-            working_memory=self.wm_manager.get_planner_context(wm),
+            working_memory=wm_context,
             episodic_hints=episodic_hints,
         )
         
@@ -162,7 +291,7 @@ class MedicalAgentOrchestrator:
         # 6. 执行计划（DAG 并行调度）
         #    先后台启动推测式预取，再跑主 DAG，主 DAG 跑完时回收预取
         prefetch_task = self._launch_prefetch(plan)
-        execution_results = await self._execute_plan(
+        execution_results, execution_meta = await self._execute_plan_with_meta(
             plan, query=user_query.text, prefetch_task=prefetch_task
         )
         
@@ -174,7 +303,11 @@ class MedicalAgentOrchestrator:
         
         # 7. 合成 draft answer
         draft = self._synthesize_draft(user_query.text, plan, execution_results)
-        
+
+        # Guard: _synthesize_draft 应始终返回 dict，但防御间歇性异常
+        if not isinstance(draft, dict):
+            draft = {"content": str(draft) if draft else "", "citations": []}
+
         # 8. 分级反思
         verify_output = self.verifier.verify(
             query=user_query.text,
@@ -197,6 +330,8 @@ class MedicalAgentOrchestrator:
                 new_plan, query=user_query.text, prefetch_task=new_prefetch_task
             )
             draft = self._synthesize_draft(user_query.text, new_plan, new_results)
+            if not isinstance(draft, dict):
+                draft = {"content": str(draft) if draft else "", "citations": []}
             verify_output = self.verifier.verify(
                 query=user_query.text,
                 draft_answer=draft,
@@ -223,6 +358,14 @@ class MedicalAgentOrchestrator:
             confidence=self._compute_confidence(verify_output),
             plan=plan,
             verification_results=verify_output["verify_chain"],
+            verification_meta={
+                "level_reached": verify_output.get("level_reached", ""),
+                "trigger_reason": verify_output.get("trigger_reason", ""),
+                "l3_skip_reason": verify_output.get("l3_skip_reason", ""),
+                "needs_replan": verify_output.get("needs_replan", False),
+            },
+            execution_meta=execution_meta,
+            memory_meta=memory_meta,
             total_elapsed_ms=total_elapsed_ms,
             total_tokens=self.planner.llm._token_count,
         )
@@ -235,9 +378,27 @@ class MedicalAgentOrchestrator:
                 l3_triggered=(verify_output["level_reached"] == "L3"),
             ))
             self._background_tasks.add(bg)
-            bg.add_done_callback(self._background_tasks.discard)
+            bg.add_done_callback(self._on_background_task_done)
         
         return final_answer
+
+    async def flush_memory_writes(self) -> None:
+        """等待当前已提交的后台记忆写入完成，供多轮评测和有序关停使用。"""
+        while self._background_tasks:
+            tasks = list(self._background_tasks)
+            await asyncio.gather(*tasks, return_exceptions=True)
+        if self._background_errors:
+            errors = self._background_errors[:]
+            self._background_errors.clear()
+            raise RuntimeError(f"episodic memory write failed: {errors[0]}") from errors[0]
+
+    def _on_background_task_done(self, task: "asyncio.Task") -> None:
+        self._background_tasks.discard(task)
+        if task.cancelled():
+            return
+        error = task.exception()
+        if error is not None:
+            self._background_errors.append(error)
     
     def answer(self, user_query: UserQuery, session_id: Optional[str] = None) -> FinalAnswer:
         """同步接口"""
@@ -253,48 +414,69 @@ class MedicalAgentOrchestrator:
         query: str = "",
         prefetch_task: Optional["asyncio.Task"] = None,
     ) -> Dict[int, ToolResult]:
-        """
-        DAG 调度：拓扑排序后分层并行执行。
+        """DAG 调度 wrapper：调用 _execute_plan_with_meta 并只返回 results。"""
+        results, _ = await self._execute_plan_with_meta(plan, query, prefetch_task)
+        return results
 
-        Args:
-            plan: 待执行的计划
-            query: 原始用户查询，供 ${query} 引用解析
-            prefetch_task: 推测式预取任务（可选），执行完主 DAG 后回收并尝试命中
-
-        关键点:
-        1. 同一拓扑层的 step 用 asyncio.gather 真并行
-        2. step.input 中的 ${query} / ${stepN.output...} 在执行前解析
-        3. 若提供 prefetch_task，DAG 执行完后回收预取结果，记录命中情况
+    async def _execute_plan_with_meta(
+        self,
+        plan: Plan,
+        query: str = "",
+        prefetch_task: Optional["asyncio.Task"] = None,
+    ) -> Tuple[Dict[int, ToolResult], Dict[str, Any]]:
         """
+        DAG 调度：拓扑排序后分层并行执行（含执行元数据）。
+
+        在 _execute_plan 基础上增加可观测性：记录 layer widths、wall time、
+        parallelism ratio（sum tool elapsed / wall time）、max layer width 等。
+
+        Returns:
+            (results, execution_meta)
+        """
+        tool_wall_start = time.time()
         results: Dict[int, ToolResult] = {}
         completed = set()
-        
+        layer_widths: List[int] = []
+
+        # 消融：PPR OFF — 从执行计划中移除 ppr_reasoner 步骤
+        if not self.enable_ppr:
+            removed_ids = {s.step_id for s in plan.steps if s.tool == "ppr_reasoner"}
+            plan.steps = [s for s in plan.steps if s.tool != "ppr_reasoner"]
+            for s in plan.steps:
+                s.depends_on = [d for d in s.depends_on if d not in removed_ids]
+
+        # 局部 semaphore：每次执行独立创建，避免跨 event loop 绑定风险
+        semaphore = asyncio.Semaphore(self.max_parallel_tools)
+
         while len(completed) < len(plan.steps):
-            # 找出当前可执行的步骤（依赖都已完成）
             ready_steps = [
                 s for s in plan.steps
                 if s.step_id not in completed
                 and all(dep in completed for dep in s.depends_on)
             ]
-            
+
             if not ready_steps:
-                # 死锁或循环依赖，标记剩余为失败
                 for s in plan.steps:
                     if s.step_id not in completed:
                         results[s.step_id] = ToolResult(
                             tool_name=s.tool, success=False, error="dependency_deadlock"
                         )
                 break
-            
-            # 并行执行同一层的步骤
+
+            layer_widths.append(len(ready_steps))
+
+            async def _run_with_semaphore(step, tool, resolved_input):
+                async with semaphore:
+                    return await self._run_step(step, tool, resolved_input)
+
             tasks = []
             for step in ready_steps:
                 resolved_input = self._resolve_input(step.input, results, query)
                 tool = self.tools.get(step.tool)
-                tasks.append(self._run_step(step, tool, resolved_input))
-            
+                tasks.append(_run_with_semaphore(step, tool, resolved_input))
+
             layer_results = await asyncio.gather(*tasks, return_exceptions=True)
-            
+
             for step, result in zip(ready_steps, layer_results):
                 if isinstance(result, Exception):
                     result = ToolResult(
@@ -305,12 +487,32 @@ class MedicalAgentOrchestrator:
                 step.status = "done" if result.success else "failed"
                 step.elapsed_ms = result.elapsed_ms
                 completed.add(step.step_id)
-        
+
+        tool_wall_ms = (time.time() - tool_wall_start) * 1000
+
         # 回收推测式预取，记录命中情况
         if prefetch_task is not None:
             await self._reconcile_prefetch(prefetch_task, plan, results)
-        
-        return results
+
+        # 构建执行元数据
+        tool_sum_elapsed_ms = sum(
+            r.elapsed_ms for r in results.values() if r.elapsed_ms is not None
+        )
+        parallelism_ratio = (
+            tool_sum_elapsed_ms / tool_wall_ms if tool_wall_ms > 0 else 0.0
+        )
+        execution_meta = {
+            "tool_wall_ms": round(tool_wall_ms, 1),
+            "tool_sum_elapsed_ms": round(tool_sum_elapsed_ms, 1),
+            "parallelism_ratio": round(parallelism_ratio, 2),
+            "layer_count": len(layer_widths),
+            "max_layer_width": max(layer_widths) if layer_widths else 0,
+            "layer_widths": layer_widths,
+            "executed_step_count": len(results),
+            "max_parallel_tools": self.max_parallel_tools,
+        }
+
+        return results, execution_meta
     
     async def _run_step(self, step: PlanStep, tool, resolved_input) -> ToolResult:
         step.status = "running"
@@ -637,11 +839,16 @@ class MedicalAgentOrchestrator:
             user_id=user_query.user_id,
             timestamp=user_query.timestamp,
             episode_type="consultation",
-            diagnoses=getattr(final_answer.plan, "speculative_prefetch", []) or [],
+            diagnoses=list(final_answer.diagnoses or []),
             symptoms=[
                 s.get("name") if isinstance(s, dict) else str(s)
                 for s in wm.patient_profile.symptoms
             ],
             summary=f"Q: {user_query.text[:100]} | A: {final_answer.content[:200]}",
+            provenance={
+                "source_type": "agent_consultation",
+                "source_id": user_query.query_id,
+                "recorded_by": "medical_agent",
+            },
         )
         self.episodic.write(episode, l3_triggered=l3_triggered)

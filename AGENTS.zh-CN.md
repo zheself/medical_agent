@@ -33,16 +33,27 @@
 - PPR IDF 边加权与类型过滤已完成。
 - 评测管道已打通。
 - CMB-Clin 评测集共有 77 条；适配脚本质量和 loose-match 规则已验证。
-- vLLM 全量评测已跑两轮：V1 baseline 和 V2 memory 隔离后。
-- 关键发现：PPR 调用率只有 6.5%。根因是 Planner 复杂度分类：93.5% 的条目被判为 `medium`，因此只触发 `local_search`。
-- eval 中 episodic memory 跨 item 污染导致的噪声 bug 已修复。
+- 当前基线：**V8** — L3 Phase 2（prompt 改写 + trigger guard）在 Phase 1（merge guard）之上。
+  - Top-3 loose **45.5%**，Top-5 49.4%，Hard Top-3 47.5%，0 errors (77/77)。
+  - V7 保持历史最佳：Top-3 46.7%，Hard Top-3 50.0%。
+  - L3 reflexion 率 9.1% — 全部为 `empty_diagnoses` 触发，correct wipe = 0。
+  - L3 merge guard + trigger guard 已默认启用。`verification_meta` 字段可观测 trigger/skip reason。
+  - 诊断基线仍为 V8；V11b 工程改动后当前为 **103/103 测试通过**。
+- V9 完成 DAG 工具并行可观测性，sleep benchmark 并行倍率 2.98x。
+- V10a-c 完成 Memory 可观测性、规则门控、写入生命周期和 60 条多会话 benchmark。
+  - Qwen3-8B V10c：Raw Memory 将回答约束通过率从 46% 提升到 90%，但每题注入 2.0 条无关记录。
+  - Rule Gate 将 episodic 上下文压缩 86.3%，但 injection recall 降至 28%；critical profile recall 保持 100%。
+  - 三配置跨用户泄漏率均为 0%。
+- P0 消融关键发现：PPR 在 CMB-Clin 上净贡献接近零（L2-only 下约 −1.3pp，运行方差范围内）。
+  PPR OFF 的 Top-3 优势（+6.1pp）主要来自 L3 补偿效应，而非 PPR 质量。
+- V11b 已完成 hard-negative reranker 与 24/36 dev/test 隔离。held-out test 上 hybrid rerank 将 Recall@1 从 30.0% 提升到 50.0%，temporal forbidden@5 从 100% 降到 16.7%，但 Recall@3/5 下降；Qwen 回答约束通过率从 80.0% 到 83.3%，因此 reranker 保持可选。
 
 接手后第一件事：
 
 1. 确认环境：`conda activate cjz_opd`。工作报告记录该环境已安装 `vllm`、`igraph`、`leidenalg` 和 `networkx`。
-2. 在 `medical_agent/` 下运行 `python tests/run_all.py`；历史基线期望是 38/38 通过。
-3. 在 8001 端口启动 vLLM，然后运行 `python -m eval.run_eval --backend vllm --data-path data/eval_cmb_clin.jsonl` 验证真实管道。
-4. 在修改 Planner 路由或评测逻辑前，先阅读 `medical_agent/reports/2026-05-30_P1_report.md` 的 5e 和 5f 节。
+2. 在 `medical_agent/` 下运行 `python tests/run_all.py`；当前期望是 **103/103 通过**。
+3. 在 8001 端口启动 vLLM，然后运行 `python -m eval.run_eval --backend vllm --data-path data/eval_cmb_clin.jsonl --concurrency 1` 验证真实管道。
+4. 阅读最新工作报告：`medical_agent/reports/2026-07-17_V11b_reranking_record.md`、`medical_agent/reports/2026-07-16_V11a_bge_retrieval_record.md` 和 `medical_agent/reports/2026-07-15_V10c_memory_benchmark_record.md`。
 
 硬性规则：
 
@@ -61,11 +72,16 @@
 - 当前 KG 规模约为 22,480 个实体、303,143 条关系、22,479 个 PageRank 节点，Leiden 社区为 L0=4、L1=14、L2=26。
 - PPR IDF 边加权和 disease 类型过滤已实现。
 - CMB-Clin 评测数据已适配到 `data/eval_cmb_clin.jsonl`，共 77 条。
-- vLLM 全量评测已跑两轮：
-  - V1 baseline：Top-3 loose 42.1%，平均延迟约 30.6s。
-  - V2 memory 隔离和 PPR 工具描述清理后：Top-3 loose 仍为 42.1%，平均延迟约 24.7s，平均 token 降约 34%。
-- 已修复一个重要 eval bug：每条 eval item 使用隔离的 `user_id=f"eval_{item_id}"`，避免 episodic memory 跨 item 污染。
-- Planner 工具选择诊断已完成。PPR/global search 调用率只有 6.5%，因为 93.5% 的 CMB-Clin 条目被判为 `medium` 并路由到 `ner + kg_local_search`。
+- **V8 诊断基线**：Top-3 loose 45.5%，Hard Top-3 47.5%，0 errors；V7 保持历史最佳 Top-3 46.7%。当前测试基线为 103/103。
+- **V10c Memory benchmark**：60 条场景，Qwen3-8B，180/180 成功。Raw Memory 回答约束通过率 90%，Rule Gate 74%，No Memory 46%，跨用户泄漏 0%。
+- Planner sanitizer (`_sanitize_plan`)：规范化 depends_on 类型、去重重复工具调用、清理非法依赖。
+- Routing guard (`_route_complexity`)：规则层修正 LLM 复杂度判断。
+- L3 merge guard：防止 L3 reflexion 覆盖 L2 正确诊断。
+- PPR OFF 消融开关和 `--max-verifier-level` flag 已在 `eval/run_eval.py` 中可用。
+- P0 关键发现：PPR 在 CMB-Clin 上净贡献接近零（L2-only 约 −1.3pp）。L3 reflexion 是更强的 lever。
+- **V11a BGE 检索**：真实 BGE-M3 dense Recall@1 72%、MRR 0.850；hybrid 将 temporal forbidden@1 从 80% 降至 0%，但整体 MRR 降至 0.793；跨用户泄漏仍为 0%。
+- **V11b Reranker**：12 候选 hard-negative benchmark，dev 冻结调参。held-out Recall@1 50.0% vs dense 30.0%，temporal forbidden@5 16.7% vs 100%，Qwen 约束通过率 83.3% vs 80.0%；由于 Recall@3/5 回退，当前保持 opt-in。
+- 最新工作记录：`reports/2026-07-17_V11b_reranking_record.md`、`reports/2026-07-16_V11a_bge_retrieval_record.md`、`reports/2026-07-15_V10c_memory_benchmark_record.md`，以及此前的 P0/L3 报告。
 
 ## 目录说明
 
@@ -175,11 +191,7 @@ python -m demo.demo_full_flow --db
 
 ## 当前优先级计划
 
-1. P0：调整 Planner complexity/routing，让临床诊断和鉴别诊断条目更充分地判为 `high`，从而触发 `kg_global_search` 和 `ppr_reasoner`。
-2. P0：增加结构化诊断候选数量。当前全量评测平均只有约 2 个候选，因此 Top-3 和 Top-5 相同。
-3. P0：路由改动后先重跑 `scripts/diagnose_tool_usage.py`。在跑昂贵的全量评测前，目标是让 PPR/global-search 调用率从当前 6.5% 有实质提升。
-4. P0：重跑 CMB-Clin vLLM 评测；当工具使用率实际发生变化后，再跑消融实验。
-5. P1：实现 `SQLiteCommunityStore`，让 global search 使用导入的 Leiden 社区，而不是 mock 社区数据。
-6. P2：改进 PPR 和 local search 的 KG 检索深度与性能，重点关注 `SQLiteKGBackend.query_neighbors`。
-7. P2：NER 先从硬编码匹配升级到 Trie/词典归一化，再考虑模型。真实 KG 的实体变体当前是召回瓶颈。
-8. P2：评估实体归一化做到什么程度才值得。reports 已证明同义词/粒度不一致是真问题，但完整归一化容易失控。
+1. **Temporal Memory**：加入结构化状态、来源和 supersede，处理新旧事实冲突。
+2. **按记忆类型的策略**：避免 medication/critical memory 共用一个全局 threshold，在保留 abstention 的同时恢复召回。
+3. **真实 L2 verifier**：替换 MockSmallModel，并重新标定 L3 trigger。
+4. **KG retrieval**：实现 `SQLiteCommunityStore`，继续实体归一化和 NER。

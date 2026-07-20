@@ -89,7 +89,11 @@ class L1RuleVerifier:
         """
         start = time.time()
         errors = []
-        
+
+        # Guard: L3 reflexion or transient LLM output may return a string
+        if not isinstance(draft_answer, dict):
+            draft_answer = {"content": str(draft_answer) if draft_answer else "", "citations": []}
+
         recommended_drugs = draft_answer.get("recommended_drugs", [])
         diagnoses = draft_answer.get("possible_diagnoses", [])
         citations = draft_answer.get("citations", [])

@@ -54,6 +54,7 @@ class AblationConfig:
     description: str
     enable_prefetch: bool = True
     enable_memory_injection: bool = True
+    enable_ppr: bool = True
     max_verifier_level: str = "L3"
     use_ppr_idf: bool = True
 
@@ -69,6 +70,11 @@ ABLATION_CONFIGS: List[AblationConfig] = [
         name="no_memory",
         description="关闭 Memory 注入（无历史/冷启动）",
         enable_memory_injection=False,
+    ),
+    AblationConfig(
+        name="no_ppr",
+        description="关闭 PPR 多跳推理（仅保留 global/local search + NER）",
+        enable_ppr=False,
     ),
     AblationConfig(
         name="no_idf",
@@ -103,6 +109,7 @@ def build_ablation_agent(config: AblationConfig, backend: str = "mock"):
     # 应用消融开关（真实生效）
     agent.enable_prefetch = config.enable_prefetch
     agent.enable_memory_injection = config.enable_memory_injection
+    agent.enable_ppr = config.enable_ppr
     agent.max_verifier_level = config.max_verifier_level
     if hasattr(agent.verifier, "max_level"):
         agent.verifier.max_level = config.max_verifier_level

@@ -58,8 +58,9 @@ streamlit run app/streamlit_app.py
 
 ### 2. 三层 Memory 体系
 - **Working Memory**: 会话级，结构化 PatientProfile 注入卡片（token 降 90%）
-- **Episodic Memory**: 用户级，Importance Scoring + 混合检索（相似度 + 重要性 + 时间衰减 + 频次）
+- **Episodic Memory**: 用户级，BGE-M3 dense / hybrid retrieval + 可选 BGE CrossEncoder reranker；向量模型版本隔离，避免不同 embedding 混用
 - **Semantic Memory**: 全局，L3 反思修正后沉淀回 KG / 规则库 / 失败案例
+- **Memory Benchmarks**: V10c Raw Memory 回答约束通过率 90% vs No Memory 46%；V11b held-out reranker Recall@1 50.0% vs dense 30.0%，Qwen 约束通过率 83.3% vs 80.0%
 
 ### 3. 分级反思（L1/L2/L3）
 - L1 规则反思：0 LLM 调用，<1ms，拦截 75% 流量
@@ -140,14 +141,14 @@ medical_agent/
 | Planner Agent 核心 | ✅ 接口完整 / 🟡 Mock LLM | 真实接 vLLM 即可 |
 | Tool 系统（NER/Local/Global/PPR） | ✅ 接口完整 / 🟡 部分 Mock | Neo4j 接口已留 |
 | Working Memory | ✅ 完整 | 纯 Python 实现 |
-| Episodic Memory | ✅ PoC（SQLite）| 切到 PG+Zilliz 仅需替换 backend |
+| Episodic Memory | ✅ SQLite PoC + V10c/V11b benchmark | BGE-M3 dense/hybrid + CrossEncoder reranker、生命周期/隔离/gating 可评测；下一步 temporal state |
 | Semantic Memory | ✅ 接口完整 / 🟡 KG 写入待接 | |
 | L1 规则反思 | ✅ 完整 | 6 类规则 + 动态扩展 |
 | L2 小模型反思 | 🟡 接口完整 / ⚪ 待蒸馏训练 | |
 | L3 Reflexion | ✅ 接口完整 / 🟡 Mock LLM | |
 | PPR 多跳推理 | ✅ 完整 | 纯 Python，alpha=0.5 调优 |
 | GraphRAG 社区检测+摘要 | ✅ mock 可跑 / ⚪ 生产用 Leiden | mock 用标签传播，生产切 igraph+leidenalg |
-| Eval 体系 | 🟡 框架完成 | 待跑全量评测 |
+| Eval 体系 | ✅ CMB-Clin + Memory benchmark | V10c Qwen3-8B 180/180 成功 |
 
 ## 切换到生产环境
 
@@ -250,17 +251,27 @@ python eval/run_eval.py \
 
 详见 `docs/06_evaluation.md`。
 
-## 性能数据（设计目标 / 待真实跑通后填入）
+## 性能数据（V7 baseline — CMB-Clin 77 条，Qwen3-8B vLLM）
 
-| 指标 | Base | Final | 备注 |
-|------|------|-------|------|
-| CMB Accuracy | 52% | 74% | 自建医疗 benchmark |
-| 多跳 F1 (2-hop) | 0.21 | 0.71 | GraphRAG + PPR 贡献 |
-| 多轮一致性 | 41% | 88% | 三层 Memory 贡献 |
-| P95 延迟 | 9.4s | 3.1s | Planner-Executor 重构 |
-| 平均 token/query | 3200 | 1500 | 结构化 plan + 卡片化 |
+| 指标 | 数值 | 备注 |
+|------|------|------|
+| Top-3 loose | **46.7%** | PPR ON, L3 merge guard enabled |
+| Top-5 loose | 49.3% | |
+| Hard Top-3 | **50.0%** | 鉴别诊断/多跳推理类 |
+| Medium Top-3 | 42.9% | 单一疾病查询类 |
+| Mean latency | 16.9s | Planner + Executor + Verifier |
+| L3 reflexion rate | 6.7% | 仅高复杂度 + L1/L2 失败时触发 |
+| Error rate | **0%** (0/77) | sanitizer + citation guards |
+| 测试 | **57/57** | 全部通过 |
 
-> ⚠️ 上述数字是设计目标和参考范围。**请用你的真实评测数据替换**。
+**当前架构**：Planner (Qwen3-8B) → Executor (NER + KG global/local search + PPR) → Verifier (L1 rules + L2 small model + L3 reflexion with merge guard)
+
+**已知限制**：
+- PPR 在 CMB-Clin 上净贡献接近零（L2-only 下约 −1.3pp，处于运行方差范围内）；PPR 价值可能在 KG/NER/实体粒度修复后释放
+- L3 merge guard 已缓解 correct wipe，但 L3 prompt 和 trigger 策略待下一阶段优化
+- citation accuracy = 0%（citation 解析格式待标准化）
+
+> 详细消融实验见 `reports/2026-06-24_P0_routing_record.md` 和 `reports/2026-06-25_L3_merge_record.md`。
 
 ## 引用与参考
 

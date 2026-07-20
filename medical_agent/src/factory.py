@@ -28,6 +28,8 @@ from .agents.planner import MockLLMBackend, PlannerAgent, VLLMBackend
 from .memory.episodic_memory import (
     EpisodicMemory, ImportanceScorer, MockEmbedder, SQLiteEpisodicBackend,
 )
+from .memory.embedders import create_embedder
+from .memory.rerankers import create_reranker
 from .memory.semantic_memory import (
     DynamicRuleStore, FailureCaseStore, SemanticMemory,
 )
@@ -80,6 +82,18 @@ def build_system(
     llm_model: Optional[str] = None,
     llm_api_key: Optional[str] = None,
     enable_thinking: bool = False,
+    enable_memory_gating: bool = False,
+    memory_gate_threshold: float = 0.2,
+    memory_embedder: str = "mock",
+    memory_embedding_model: str = "BAAI/bge-m3",
+    memory_embedding_device: Optional[str] = None,
+    memory_retrieval_mode: str = "hybrid",
+    memory_reranker: str = "none",
+    memory_reranker_model: str = "BAAI/bge-reranker-v2-m3",
+    memory_reranker_device: Optional[str] = None,
+    memory_reranker_candidate_k: int = 20,
+    memory_reranker_threshold: Optional[float] = None,
+    memory_retrieval_weights: Tuple[float, float, float, float] = (0.5, 0.3, 0.15, 0.05),
 ) -> Tuple[MedicalAgentOrchestrator, EpisodicMemory]:
     """
     组装完整 Agent 系统。
@@ -92,6 +106,8 @@ def build_system(
         llm_model: 模型名，默认从 .env 读取 LLM_MODEL_NAME
         llm_api_key: API key，默认从 .env 读取 LLM_API_KEY
         enable_thinking: 是否启用 LLM 的 thinking 模式（Qwen3 等）
+        memory_embedder: "mock" 或 "bge-m3"
+        memory_retrieval_mode: "dense" 或 "hybrid"
 
     Returns:
         (orchestrator, episodic_memory)
@@ -140,13 +156,26 @@ def build_system(
 
     # ---------- Memory ----------
     wm_manager = WorkingMemoryManager(summarizer=MockSummarizer())
-    epi_embedder = MockEmbedder()
+    epi_embedder = create_embedder(
+        memory_embedder,
+        model_name=memory_embedding_model,
+        device=memory_embedding_device,
+    )
 
     episodic_db = db_path if use_db else ":memory:"
     episodic = EpisodicMemory(
         backend=SQLiteEpisodicBackend(episodic_db),
         embedder=epi_embedder,
         scorer=ImportanceScorer(),
+        retrieval_mode=memory_retrieval_mode,
+        reranker=create_reranker(
+            memory_reranker,
+            model_name=memory_reranker_model,
+            device=memory_reranker_device,
+        ),
+        reranker_candidate_k=memory_reranker_candidate_k,
+        reranker_threshold=memory_reranker_threshold,
+        retrieval_weights=memory_retrieval_weights,
     )
 
     # Semantic：db 模式下失败案例/动态规则也指向同一个 .db
@@ -174,6 +203,8 @@ def build_system(
         wm_manager=wm_manager,
         episodic_memory=episodic,
         semantic_memory=semantic,
+        enable_memory_gating=enable_memory_gating,
+        memory_gate_threshold=memory_gate_threshold,
     )
 
     return orch, episodic
